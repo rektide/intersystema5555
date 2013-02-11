@@ -1,0 +1,29 @@
+{
+	"name": "intersystema5555",
+	"version": "1.0.0",
+	"description": "Local service discoverable foundational library",
+	"main": "server.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "http://git.voodoowarez.com/intersystema5555"
+	},
+	"keywords": [
+		"discovery",
+		"discoverability",
+		"discoverable",
+		"local-service",
+		"network-service",
+		"mdns",
+		"dns-sd"
+	],
+	"author": "Matthew E Fowle",
+	"license": "MIT/X",
+	"dependencies": {
+		"dbus-promised": ">= 0.0.8",
+		"underscore": ">= 1.4.4",
+		"q": ">= 0.8.8"
+	}
+}
