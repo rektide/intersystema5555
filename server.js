@@ -2,6 +2,9 @@ var dbus = require("dbus-promised"),
   underscore= require("underscore"),
   Q= require("q")
 
+var FACE_SERVER= "org.freedesktop.Avahi.EntryGroup",
+  FACE_ENTRYGROUP= "org.freedesktop.Avahi.EntryGroup"
+
 module.exports= {
 	avahi: avahi,
 	bus: makeBus,
@@ -28,21 +31,34 @@ function avahi(opts,bus){
 	bus= bus||module.exports.bus()
 	opts= underscore.extend(opts||{},module.export.options)
 	opts.bus= bus
-	opts.defer= Q.defer()
-	var fail= opts.defer.reject.bind(opts.defer)
-	bus.getService("org.freedesktop.Avahi.Server").getInterface("/org/freedesktop/Avahi/Server","org.freedesktop.Avahi.Server",function(err, server){
-		if(err) return fail(err)
-		server.EntryGroupNew()
-		.then(function(path){
-			console.debug("Added EntryGroup")
-			this.bus.getService("org.freedesktop.Avahi.EntryGroup").getInterface(path,"org.freedesktop.Avahi.EntryGroup",function(err, eg){
-				if(err) this.defer.reject(err)
-				var service= eg.AddService(this.interface,this.proto,this.flags,this.name,this.type,this.domain,this.host,this.port,this.txt)
-				.then(function(err){
-					if(err) return fail(err)
-					this.resolve()
-				}.bind(this),fail)
-			})
-		},fail)
-	})
+
+	// generate service objects
+	opts.serviceServer= opts.bus.getService(FACE_SERVER)
+	opts.serviceEntryGroup= opts.bus.getService(FACE_ENTRYGROUP)
+
+	// make an entrygroup
+	var avahiServer= getAvahiServer(opts),
+	  entryGroupPath= avahiServer.then(function(server){return server.EntryGroupNew()}),
+	  entryGroup= entryGroupPath.then(function(path){return getEntryGroup(path,opts)})
+
+	// build service & records
+	var srv= entryGroup.then(addService.bind(opts))
+
+	// generate take-down codepath
+	var cleanup= function(){
+		this.then(function(eg){
+			eg.Free()
+		})
+	}.bind(entryGroup)
+	return {entryGroup:entryGroup, path:entryGroupPath, srv:srv, cleanup:cleanup}
 }
+
+function getAvahiServer(opts){
+	return opts.serviceServer.getInterface("/org/freedesktop/Avahi/Server",FACE_SERVER) }
+
+function getEntryGroup(path,opts){
+	return opts.serviceEntryGroup.getInterface(path,FACE_ENTRYGROUP) }
+
+function addService(eg){
+	return eg.AddService(this.interface,this.proto,this.flags,this.name,this.type,this.domain,this.host,this.port,this.txt) }
+
